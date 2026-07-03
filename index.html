@@ -5,28 +5,124 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>📅 Vereinskalender</title>
 <meta name="theme-color" content="#1a56a0" />
-<style>
-  :root { --blue:#1a56a0; --blue-light:#e8f0fb; --text:#1e2330; --muted:#6b7280; --white:#fff; --shadow:0 2px 12px rgba(0,0,0,.08); --radius:12px; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:"Segoe UI",system-ui,sans-serif; background:#eef1f6; color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-  .card { background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); padding:36px 32px; max-width:440px; text-align:center; }
-  .icon { font-size:44px; margin-bottom:12px; }
-  h1 { font-size:20px; color:var(--blue); margin-bottom:10px; }
-  .badge { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; background:var(--blue-light); color:var(--blue); border-radius:999px; padding:5px 14px; margin-bottom:16px; }
-  p { font-size:14px; color:var(--muted); line-height:1.5; margin-bottom:18px; }
-  a.back { font-size:13px; color:var(--blue); text-decoration:none; font-weight:600; }
-  a.back:hover { text-decoration:underline; }
-  .page-logo { position:fixed; top:20px; right:20px; height:40px; width:auto; }
-</style>
+<link rel="stylesheet" href="style.css?v=1.0" />
 </head>
 <body>
-  <img class="page-logo" src="logo.png" alt="1. SC 1911 e.V. Heilbad Heiligenstadt" />
-  <div class="card">
-    <div class="icon">📅</div>
-    <div class="badge">🚧 In Bearbeitung</div>
-    <h1>Vereinskalender</h1>
-    <p>Zentraler Vereinskalender für Termine, Trainingszeiten und Veranstaltungen des Vereins auf einen Blick. Dieses Tool ist noch in Entwicklung — hier entsteht in Kürze mehr.</p>
-    <a class="back" href="https://tecko1985.github.io/ToolsUebersicht/">← Zurück zur Tools-Übersicht</a>
+
+  <div class="connect-screen" id="connect-screen">
+    <div class="card">
+      <h2>📅 Vereinskalender</h2>
+      <p id="connect-message">Bitte über die Tools-Übersicht anmelden, um die anstehenden Vereinstermine zu sehen.</p>
+      <div class="btn-row">
+        <a class="btn" href="https://tecko1985.github.io/ToolsUebersicht/">Zur Tools-Übersicht</a>
+      </div>
+      <p class="muted" id="cloud-error" style="margin-top:14px;"></p>
+    </div>
   </div>
+
+  <div id="app-shell" style="display:none;">
+    <header>
+      <h1>📅 Vereinskalender <span class="version-badge" id="version-badge"></span></h1>
+      <div class="header-right">
+        <span class="header-status" id="save-status"></span>
+        <span class="header-user" id="header-user"></span>
+        <img class="header-logo" src="logo.png" alt="1. SC 1911 e.V. Heilbad Heiligenstadt" />
+      </div>
+    </header>
+
+    <nav>
+      <button data-tab="termine" class="active">Termine</button>
+      <button data-tab="info">Info</button>
+    </nav>
+
+    <main>
+
+      <!-- ---------- Termine ---------- -->
+      <section class="tab-section active" id="tab-termine">
+        <div class="toolbar">
+          <div>
+            <h2 class="section-title">Anstehende Termine</h2>
+            <span class="filter-count" id="termine-count"></span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn small editor-only hidden" id="btn-new-termin">+ Neuer Termin</button>
+          </div>
+        </div>
+
+        <div id="hero"></div>
+
+        <h3 class="weitere-heading hidden" id="weitere-heading">Weitere Termine</h3>
+        <div id="termin-list"></div>
+
+        <div class="empty-state hidden" id="termine-empty">
+          Aktuell sind keine anstehenden Termine eingetragen.
+        </div>
+      </section>
+
+      <!-- ---------- Info ---------- -->
+      <section class="tab-section" id="tab-info">
+        <div class="card">
+          <h2>Über den Vereinskalender <span class="version-badge" id="version-badge-2"></span></h2>
+          <p class="muted">
+            Hier siehst du die als Nächstes anstehenden Vereinstermine — z. B. gesperrte Hallen oder
+            Plätze, Trainingszeiten und Veranstaltungen. Vergangene Termine verschwinden automatisch.
+          </p>
+          <p class="muted" id="info-user" style="margin-top:10px;"></p>
+        </div>
+        <div class="card">
+          <h2>Änderungen</h2>
+          <div id="changelog-list"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ---------- Termin-Formular ---------- -->
+  <div class="modal-overlay hidden" id="termin-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="termin-modal-title">Neuer Termin</h2>
+        <button class="modal-close" id="termin-modal-close" aria-label="Schließen">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="termin-form">
+          <div class="form-grid">
+            <div class="form-field wide"><label>Titel *</label><input type="text" id="tf-titel" placeholder="z. B. Kunstrasen gesperrt" /></div>
+            <div class="form-field"><label>Kategorie</label><select id="tf-kategorie"></select></div>
+            <div class="form-field"><label>Ort / Platz</label><input type="text" id="tf-ort" placeholder="optional, z. B. KuRa Rechts" /></div>
+            <div class="form-field"><label>Datum *</label><input type="date" id="tf-datum" /></div>
+            <div class="form-field"><label>Enddatum (mehrtägig)</label><input type="date" id="tf-enddatum" /></div>
+          </div>
+          <div class="form-field wide" style="margin-bottom:10px;">
+            <label class="check-label"><input type="checkbox" id="tf-ganztags" /> Ganztägig (ohne Uhrzeit)</label>
+          </div>
+          <div class="form-grid" id="tf-zeit-grid">
+            <div class="form-field"><label>Von (Uhrzeit)</label><input type="time" id="tf-startzeit" /></div>
+            <div class="form-field"><label>Bis (Uhrzeit)</label><input type="time" id="tf-endzeit" /></div>
+          </div>
+          <div class="form-field wide"><label>Notiz</label><input type="text" id="tf-notiz" placeholder="optional" /></div>
+
+          <div class="form-field wide">
+            <label>Dateien (PDF, Bild o. Ä.)</label>
+            <div class="anhang-edit-list" id="tf-anhaenge"></div>
+            <button type="button" class="btn secondary small editor-only" id="btn-add-anhang">📎 Datei hinzufügen</button>
+            <input type="file" id="anhang-file-input" class="hidden" />
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn danger hidden" id="btn-delete-termin">Löschen</button>
+        <div class="btn-row">
+          <button class="btn secondary" id="btn-cancel-termin">Abbrechen</button>
+          <button class="btn success" id="btn-save-termin">Speichern</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js?v=1.0"></script>
+  <script src="db.js?v=1.0"></script>
+  <script src="app.js?v=1.0"></script>
 </body>
 </html>
