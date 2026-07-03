@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>📅 Vereinskalender</title>
+<meta name="theme-color" content="#1a56a0" />
+<style>
+  :root { --blue:#1a56a0; --blue-light:#e8f0fb; --text:#1e2330; --muted:#6b7280; --white:#fff; --shadow:0 2px 12px rgba(0,0,0,.08); --radius:12px; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Segoe UI",system-ui,sans-serif; background:#eef1f6; color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); padding:36px 32px; max-width:440px; text-align:center; }
+  .icon { font-size:44px; margin-bottom:12px; }
+  h1 { font-size:20px; color:var(--blue); margin-bottom:10px; }
+  .badge { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; background:var(--blue-light); color:var(--blue); border-radius:999px; padding:5px 14px; margin-bottom:16px; }
+  p { font-size:14px; color:var(--muted); line-height:1.5; margin-bottom:18px; }
+  a.back { font-size:13px; color:var(--blue); text-decoration:none; font-weight:600; }
+  a.back:hover { text-decoration:underline; }
+  .page-logo { position:fixed; top:20px; right:20px; height:40px; width:auto; }
+</style>
+</head>
+<body>
+  <img class="page-logo" src="logo.png" alt="1. SC 1911 e.V. Heilbad Heiligenstadt" />
+  <div class="card">
+    <div class="icon">📅</div>
+    <div class="badge">🚧 In Bearbeitung</div>
+    <h1>Vereinskalender</h1>
+    <p>Zentraler Vereinskalender für Termine, Trainingszeiten und Veranstaltungen des Vereins auf einen Blick. Dieses Tool ist noch in Entwicklung — hier entsteht in Kürze mehr.</p>
+    <a class="back" href="https://tecko1985.github.io/ToolsUebersicht/">← Zurück zur Tools-Übersicht</a>
+  </div>
+</body>
+</html>
