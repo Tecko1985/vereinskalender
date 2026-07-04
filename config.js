@@ -1,4 +1,4 @@
-const APP_VERSION = "1.0";
+const APP_VERSION = "1.1";
 
 // Gruppen-Id (Tools-Übersicht-Benutzerverwaltung) für Nutzer ohne Admin-Status,
 // die Termine trotzdem eintragen/bearbeiten dürfen. Mitgliederpflege dort, nicht
@@ -20,6 +20,17 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.1",
+    groups: [
+      {
+        title: "Navigation",
+        items: [
+          "„Zurück zum Dashboard"-Link ergänzt, da die Kacheln in der Tools-Übersicht jetzt im selben Tab statt in einem neuen Tab öffnen."
+        ]
+      }
+    ]
+  },
   {
     version: "1.0",
     groups: [
