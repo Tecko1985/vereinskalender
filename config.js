@@ -26,7 +26,7 @@ const APP_CHANGELOG = [
       {
         title: "Navigation",
         items: [
-          "„Zurück zum Dashboard"-Link ergänzt, da die Kacheln in der Tools-Übersicht jetzt im selben Tab statt in einem neuen Tab öffnen."
+          "„Zurück zum Dashboard“-Link ergänzt, da die Kacheln in der Tools-Übersicht jetzt im selben Tab statt in einem neuen Tab öffnen."
         ]
       }
     ]
