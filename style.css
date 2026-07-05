@@ -211,6 +211,19 @@ body.can-edit .termin-card:hover { background: var(--blue-light); }
 }
 .anhang-remove { background: none; border: none; color: var(--red); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 6px; }
 
+.kategorie-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.kategorie-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--gray); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+}
+.kategorie-row .kat-name-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 14px; font-family: inherit; }
+.kategorie-remove { background: none; border: none; color: var(--red); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 6px; flex: 0 0 auto; }
+.kategorie-add-row { display: flex; align-items: center; gap: 10px; }
+.kategorie-add-row input[type="text"] { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 14px; font-family: inherit; }
+.kategorie-row input[type="color"], .kategorie-add-row input[type="color"] {
+  width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 6px; flex: 0 0 auto; cursor: pointer;
+}
+
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(20, 26, 40, 0.55);
   display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 100; overflow-y: auto;

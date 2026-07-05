@@ -1,4 +1,4 @@
-const APP_VERSION = "1.2";
+const APP_VERSION = "1.3";
 
 // Gruppen-Id (Tools-Übersicht-Benutzerverwaltung) für Nutzer ohne Admin-Status,
 // die Termine trotzdem eintragen/bearbeiten dürfen. Mitgliederpflege dort, nicht
@@ -20,6 +20,17 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.3",
+    groups: [
+      {
+        title: "Kategorien-Verwaltung",
+        items: [
+          "Neuer Tab „Einstellungen“ (nur für Bearbeiter sichtbar): Kategorien für Termine anlegen, umbenennen, umfärben und löschen — sie stehen danach direkt im Termin-Formular als Auswahl zur Verfügung."
+        ]
+      }
+    ]
+  },
   {
     version: "1.2",
     groups: [

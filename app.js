@@ -209,6 +209,7 @@ function renderVersionInfo() {
 function renderAll() {
   renderTermine();
   renderVersionInfo();
+  renderKategorien();
 }
 
 // ---------- Tabs ----------
@@ -391,6 +392,70 @@ async function downloadAnhang(id, name) {
   }
 }
 
+// ---------- Kategorien-Verwaltung (Einstellungen-Tab) ----------
+function renderKategorien() {
+  const el = document.getElementById("kategorie-list");
+  if (!el) return;
+  el.innerHTML = appData.kategorien.map((k) => `
+    <div class="kategorie-row" data-id="${escapeHtml(k.id)}">
+      <input type="color" class="kat-farbe-input" data-id="${escapeHtml(k.id)}" value="${escapeHtml(k.farbe)}" title="Farbe" />
+      <input type="text" class="kat-name-input" data-id="${escapeHtml(k.id)}" value="${escapeHtml(k.name)}" maxlength="60" />
+      <button type="button" class="kategorie-remove" data-id="${escapeHtml(k.id)}" aria-label="Kategorie löschen">×</button>
+    </div>
+  `).join("");
+}
+
+async function saveKategorien() {
+  setSaveStatus("Speichern…", "pending");
+  try {
+    await gatewaySaveWithStand();
+    renderAll();
+  } catch (e) {
+    if (e instanceof ConflictError) { await reloadAfterConflict(); }
+    else if (e instanceof NotLoggedInError) { showConnectScreen("Sitzung abgelaufen — bitte neu anmelden."); }
+    else { console.error("Speichern fehlgeschlagen", e); setSaveStatus("Nicht gespeichert", "error"); alert("Speichern fehlgeschlagen: " + e.message); }
+  }
+}
+
+async function addKategorie() {
+  const nameInput = document.getElementById("neue-kategorie-name");
+  const farbeInput = document.getElementById("neue-kategorie-farbe");
+  const name = nameInput.value.trim();
+  if (!name) { alert("Bitte einen Namen für die Kategorie eingeben."); return; }
+  appData.kategorien.push({ id: uuid(), name, farbe: farbeInput.value });
+  nameInput.value = "";
+  farbeInput.value = "#6b7280";
+  await saveKategorien();
+}
+
+async function onKategorieFieldChange(e) {
+  const id = e.target.dataset.id;
+  const k = id ? kategorieById(id) : null;
+  if (!k) return;
+  if (e.target.classList.contains("kat-name-input")) {
+    const name = e.target.value.trim();
+    if (!name) { e.target.value = k.name; return; }
+    k.name = name;
+  } else if (e.target.classList.contains("kat-farbe-input")) {
+    k.farbe = e.target.value;
+  } else {
+    return;
+  }
+  await saveKategorien();
+}
+
+async function onKategorieListClick(e) {
+  const btn = e.target.closest(".kategorie-remove");
+  if (!btn) return;
+  const k = kategorieById(btn.dataset.id);
+  if (!k) return;
+  const used = appData.termine.filter((t) => t.kategorie === k.id).length;
+  const hinweis = used > 0 ? ` Sie wird aktuell bei ${used} Termin${used === 1 ? "" : "en"} verwendet (diese zeigen danach keine Kategorie mehr an).` : "";
+  if (!confirm(`Kategorie "${k.name}" wirklich löschen?${hinweis}`)) return;
+  appData.kategorien = appData.kategorien.filter((x) => x.id !== k.id);
+  await saveKategorien();
+}
+
 // ---------- Gateway: Speichern / Konflikte ----------
 function setSaveStatus(text, kind) {
   const el = document.getElementById("save-status");
@@ -491,6 +556,11 @@ function setupListeners() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !document.getElementById("termin-modal").classList.contains("hidden")) closeTerminModal();
   });
+
+  // Kategorien-Verwaltung (Einstellungen-Tab)
+  document.getElementById("btn-kategorie-add").addEventListener("click", addKategorie);
+  document.getElementById("kategorie-list").addEventListener("change", onKategorieFieldChange);
+  document.getElementById("kategorie-list").addEventListener("click", onKategorieListClick);
 }
 
 function onCardClick(e) {
