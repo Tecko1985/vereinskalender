@@ -60,9 +60,9 @@ async function gatewaySave(dataObj) {
   gatewayRev = typeof body.rev === "string" ? body.rev : null;
 }
 
-// Liefert {username, isAdmin, groupIds, vorname, nachname} der eingeloggten Person.
+// Liefert {username, isAdmin, groupIds, vorname, nachname, canEdit} der eingeloggten Person.
 async function fetchMe() {
-  return gatewayRequest({ action: "me" });
+  return gatewayRequest({ action: "me", app: GATEWAY_APP_ID });
 }
 
 // ---------- Datei-Anhänge (Binär-Upload über das Gateway) ----------

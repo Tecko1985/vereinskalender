@@ -1,9 +1,4 @@
-const APP_VERSION = "1.4";
-
-// Gruppen-Id (Tools-Übersicht-Benutzerverwaltung) für Nutzer ohne Admin-Status,
-// die Termine trotzdem eintragen/bearbeiten dürfen. Mitgliederpflege dort, nicht
-// hier. Zunächst steht dort nur Uwe Meinhold (Geschäftsstelle).
-const EDITOR_GROUP_ID = "vereinskalender-bearbeiter";
+const APP_VERSION = "1.5";
 
 // Größenlimit pro hochgeladener Datei. base64 im Request bläht ~+33 % auf, bleibt
 // damit klar unter dem Cloudflare-Free-Limit. Muss zum Worker-Cap passen.
@@ -20,6 +15,17 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.5",
+    groups: [
+      {
+        title: "Rechte",
+        items: [
+          "Bearbeiten-Rechte werden jetzt über die Gruppenverwaltung der Tools-Übersicht vergeben, statt über eine feste Bearbeiter-Gruppe."
+        ]
+      }
+    ]
+  },
   {
     version: "1.4",
     groups: [

@@ -87,13 +87,12 @@ function katFarbe(id) { const k = kategorieById(id); return k ? k.farbe : "#6b72
 function katName(id) { const k = kategorieById(id); return k ? k.name : "—"; }
 
 // ---------- Rechte / Nutzer ----------
-// Bearbeiten dürfen Site-Admins sowie Mitglieder der Gruppe EDITOR_GROUP_ID
-// (Pflege in der Tools-Übersicht-Benutzerverwaltung) — alle anderen eingeloggten
-// Nutzer dürfen die Termine nur ansehen.
+// Bearbeiten dürfen Site-Admins sowie Nutzer, deren Gruppe in der Tools-Übersicht
+// für diese App Bearbeiten-Rechte hat (server-seitig aufgelöst, siehe fetchMe in
+// db.js) — alle anderen eingeloggten Nutzer dürfen die Termine nur ansehen.
 function canEdit() {
   if (!currentUser) return false;
-  if (currentUser.isAdmin) return true;
-  return (currentUser.groupIds || []).includes(EDITOR_GROUP_ID);
+  return currentUser.isAdmin || !!currentUser.canEdit;
 }
 
 function renderHeaderUser() {
