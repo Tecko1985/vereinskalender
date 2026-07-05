@@ -1,4 +1,4 @@
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.4";
 
 // Gruppen-Id (Tools-Übersicht-Benutzerverwaltung) für Nutzer ohne Admin-Status,
 // die Termine trotzdem eintragen/bearbeiten dürfen. Mitgliederpflege dort, nicht
@@ -20,6 +20,17 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.4",
+    groups: [
+      {
+        title: "Navigation",
+        items: [
+          "Der Tab „Einstellungen“ zeigt jetzt zusätzlich die aktuelle Versionsnummer direkt am Tab-Reiter an."
+        ]
+      }
+    ]
+  },
   {
     version: "1.3",
     groups: [
