@@ -209,6 +209,18 @@ async function toggleUmfrageDetails(terminId, candId, rowEl) {
   detailsEl.classList.remove("hidden");
 }
 
+// "Angelegt von <Name> am <Datum>, <Uhrzeit>" — nur wenn beide Angaben vorhanden
+// sind (bei Termine aus der Zeit vor 1.9 fehlt erstelltAm, dann kein Meta-Text).
+function erstelltLabel(t) {
+  if (!t.erstelltAm) return "";
+  const d = new Date(t.erstelltAm);
+  if (isNaN(d.getTime())) return "";
+  const datum = d.toLocaleDateString("de-DE");
+  const zeit = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const wer = t.ersteller ? displayNameFor(t.ersteller) : null;
+  return wer ? `Angelegt von ${wer} am ${datum}, ${zeit} Uhr` : `Angelegt am ${datum}, ${zeit} Uhr`;
+}
+
 function terminCardHtml(t, isHero) {
   const start = t.datum;
   const end = terminEndIso(t);
@@ -221,6 +233,8 @@ function terminCardHtml(t, isHero) {
   const umfrage = terminIsUmfrage(t);
   const badges = `${umfrage ? `<span class="tc-badge tc-badge-umfrage">📊 Umfrage</span>` : ""}` +
     `${t.privat ? `<span class="tc-badge tc-badge-privat">🔒 Privat</span>` : ""}`;
+  const erstellt = erstelltLabel(t);
+  const erstelltHtml = erstellt ? `<div class="tc-meta">🕓 ${escapeHtml(erstellt)}</div>` : "";
   return `
     <div class="termin-card${isHero ? " is-hero" : ""}" data-id="${escapeHtml(t.id)}" style="--kat:${escapeHtml(farbe)}">
       ${isHero ? `<div class="hero-label">Nächster Termin</div>` : ""}
@@ -238,6 +252,7 @@ function terminCardHtml(t, isHero) {
           ${notiz}
           ${umfrage ? umfrageHtml(t) : ""}
           ${anhaengeHtml(t)}
+          ${erstelltHtml}
         </div>
       </div>
     </div>`;
@@ -572,7 +587,10 @@ async function saveTermin() {
     const geteiltGruppen = Array.from(document.querySelectorAll(".tf-group-checkbox:checked")).map((el) => el.value);
     t.geteiltUsers = (privat && pendingShareUsers.length) ? pendingShareUsers.map((u) => u.username) : undefined;
     t.geteiltGruppen = (privat && geteiltGruppen.length) ? geteiltGruppen : undefined;
-    if (isNew && currentUser) t.ersteller = currentUser.username;
+    if (isNew) {
+      if (currentUser) t.ersteller = currentUser.username;
+      t.erstelltAm = new Date().toISOString();
+    }
 
     // Entfernte bestehende Anhänge physisch löschen (best-effort).
     for (const id of removedExistingIds) await gatewayDeleteFile(id);
@@ -794,6 +812,9 @@ async function startApp() {
   renderHeaderUser();
   applyAdminVisibility();
   renderVersionInfo();
+  // Für "Angelegt von <Name>"-Anzeige auf den Karten — auch für Nicht-Bearbeiter,
+  // damit Namen (statt nur Nutzernamen) direkt beim ersten Rendern verfügbar sind.
+  await ensureDirectoryLoaded();
   await purgePastEvents();
   renderAll();
 }

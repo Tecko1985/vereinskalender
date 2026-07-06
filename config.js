@@ -1,4 +1,4 @@
-const APP_VERSION = "1.8";
+const APP_VERSION = "1.9";
 
 // Größenlimit pro hochgeladener Datei. base64 im Request bläht ~+33 % auf, bleibt
 // damit klar unter dem Cloudflare-Free-Limit. Muss zum Worker-Cap passen.
@@ -15,6 +15,17 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.9",
+    groups: [
+      {
+        title: "Mehr Infos je Termin",
+        items: [
+          "Jede Terminkarte zeigt jetzt, von wem und wann der Termin angelegt wurde (sofern diese Angabe vorliegt)."
+        ]
+      }
+    ]
+  },
   {
     version: "1.8",
     groups: [
