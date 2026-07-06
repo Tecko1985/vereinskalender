@@ -1,4 +1,4 @@
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.7";
 
 // Größenlimit pro hochgeladener Datei. base64 im Request bläht ~+33 % auf, bleibt
 // damit klar unter dem Cloudflare-Free-Limit. Muss zum Worker-Cap passen.
@@ -15,6 +15,17 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.7",
+    groups: [
+      {
+        title: "Anhänge",
+        items: [
+          "Angehängte Dateien öffnen sich jetzt zum Ansehen in einem neuen Tab (z. B. PDF/Bild direkt im Browser), statt automatisch heruntergeladen zu werden."
+        ]
+      }
+    ]
+  },
   {
     version: "1.6",
     groups: [

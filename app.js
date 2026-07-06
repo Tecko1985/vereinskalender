@@ -144,7 +144,7 @@ function applyAdminVisibility() {
 function anhaengeHtml(t) {
   if (!Array.isArray(t.anhaenge) || t.anhaenge.length === 0) return "";
   return `<div class="tc-anhaenge">` + t.anhaenge.map((a) =>
-    `<button type="button" class="anhang" data-file-id="${escapeHtml(a.id)}" data-file-name="${escapeHtml(a.name)}">📎 ${escapeHtml(a.name)}</button>`
+    `<button type="button" class="anhang" data-file-id="${escapeHtml(a.id)}" data-file-name="${escapeHtml(a.name)}" data-mime="${escapeHtml(a.mime || "")}">📎 ${escapeHtml(a.name)}</button>`
   ).join("") + `</div>`;
 }
 
@@ -629,21 +629,27 @@ async function purgePastEvents() {
   }
 }
 
-// ---------- Herunterladen eines Anhangs ----------
-async function downloadAnhang(id, name) {
+// ---------- Anhang ansehen (neuer Tab, kein erzwungener Download) ----------
+async function viewAnhang(id, mime) {
+  // Leeres Fenster SOFORT (synchron im Klick-Handler) öffnen, sonst greift in
+  // manchen Browsern der Popup-Blocker, weil der eigentliche Fetch erst nach
+  // einem await zurückkommt und damit nicht mehr als direkte Nutzeraktion zählt.
+  const win = window.open("", "_blank");
   try {
-    const blob = await gatewayFetchFileBlob(id);
+    const rawBlob = await gatewayFetchFileBlob(id);
+    // Der Content-Type der dav-file-get-Antwort ist bei erweiterungslos
+    // gespeicherten Dateien nicht verlässlich (siehe ToolsUebersicht-Gotcha) —
+    // die selbst gespeicherten Anhang-Metadaten (mime) verwenden statt blob.type
+    // zu vertrauen, sonst zeigt der Browser z. B. ein Bild nicht an, sondern
+    // bietet es zum Download an.
+    const blob = mime ? new Blob([rawBlob], { type: mime }) : rawBlob;
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name || "datei";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    if (win) win.location.href = url; else window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   } catch (e) {
-    console.error("Datei-Download fehlgeschlagen", e);
-    alert("Die Datei konnte nicht geladen werden: " + e.message);
+    console.error("Datei konnte nicht geöffnet werden", e);
+    if (win) win.close();
+    alert("Die Datei konnte nicht geöffnet werden: " + e.message);
   }
 }
 
@@ -834,7 +840,7 @@ function onCardClick(e) {
   const vote = e.target.closest(".umfrage-vote");
   if (vote) { castVote(vote.dataset.terminId, vote.dataset.candId, vote.dataset.val); return; }
   const anhang = e.target.closest(".anhang");
-  if (anhang) { downloadAnhang(anhang.dataset.fileId, anhang.dataset.fileName); return; }
+  if (anhang) { viewAnhang(anhang.dataset.fileId, anhang.dataset.mime); return; }
   const card = e.target.closest(".termin-card");
   if (card && canEdit()) openTerminModal(card.dataset.id);
 }
