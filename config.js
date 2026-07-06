@@ -1,4 +1,4 @@
-const APP_VERSION = "1.5";
+const APP_VERSION = "1.6";
 
 // Größenlimit pro hochgeladener Datei. base64 im Request bläht ~+33 % auf, bleibt
 // damit klar unter dem Cloudflare-Free-Limit. Muss zum Worker-Cap passen.
@@ -15,6 +15,25 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.6",
+    groups: [
+      {
+        title: "Privattermine & Teilen",
+        items: [
+          "Termine können jetzt als „Privattermin“ markiert werden — diese sieht nur die Person, die sie angelegt hat.",
+          "Private Termine lassen sich gezielt mit einzelnen Nutzern (Suchfeld) oder ganzen Gruppen teilen, die den Termin dann zusätzlich sehen."
+        ]
+      },
+      {
+        title: "Umfrage-Termine",
+        items: [
+          "Neue Option „Umfrage“: statt eines einzelnen Datums mehrere Terminvorschläge eintragen, über die abgestimmt werden kann.",
+          "Abstimmen geht direkt auf der Terminkarte per Haken/Kreuz-Button je Vorschlag, ganz ohne das Termin-Formular zu öffnen."
+        ]
+      }
+    ]
+  },
   {
     version: "1.5",
     groups: [

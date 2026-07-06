@@ -73,6 +73,15 @@ let pendingAnhaenge = [];   // Elemente: {id,name,mime,size,existing:true} | {fi
 let removedExistingIds = []; // Ids bestehender Anhänge, die beim Speichern gelöscht werden
 let persistTimer = null;
 
+// Nutzer/Gruppen-Verzeichnis für den "Teilen mit"-Picker (nur für Bearbeiter,
+// einmalig beim ersten Öffnen des Formulars geladen).
+let directoryUsers = null;   // [{username, displayName}] | null solange nicht geladen
+let directoryGroups = null;  // [{id, name}]
+let pendingShareUsers = [];  // [{username, displayName}] im gerade offenen Formular
+let pendingShareGroupIds = []; // [groupId] im gerade offenen Formular
+// Terminvorschläge einer Umfrage im gerade offenen Formular.
+let pendingUmfrageTermine = []; // [{id, datum}]
+
 // ---------- Normalisierung & Lookups ----------
 function normalizeData(data) {
   const d = data && typeof data === "object" ? data : {};
@@ -94,6 +103,23 @@ function canEdit() {
   if (!currentUser) return false;
   return currentUser.isAdmin || !!currentUser.canEdit;
 }
+
+// Sichtbarkeit eines Termins für den aktuell eingeloggten Nutzer: nicht-private
+// Termine sind wie bisher für alle eingeloggten Nutzer sichtbar. Private Termine
+// sieht nur der Ersteller, explizit geteilte Nutzer/Gruppen sowie Admins (gleiches
+// Bypass-Muster wie bei der Tool-Sichtbarkeit in der Tools-Übersicht).
+function terminVisibleFor(t) {
+  if (!t.privat) return true;
+  if (!currentUser) return false;
+  if (currentUser.isAdmin) return true;
+  if (t.ersteller && t.ersteller === currentUser.username) return true;
+  if (Array.isArray(t.geteiltUsers) && t.geteiltUsers.includes(currentUser.username)) return true;
+  if (Array.isArray(t.geteiltGruppen) && Array.isArray(currentUser.groupIds) &&
+      t.geteiltGruppen.some((g) => currentUser.groupIds.includes(g))) return true;
+  return false;
+}
+
+function terminIsUmfrage(t) { return !!(t.umfrage && t.umfrage.aktiv && Array.isArray(t.umfrage.termine) && t.umfrage.termine.length); }
 
 function renderHeaderUser() {
   const el = document.getElementById("header-user");
@@ -122,6 +148,32 @@ function anhaengeHtml(t) {
   ).join("") + `</div>`;
 }
 
+// Terminvorschläge einer Umfrage als klickbare Haken/Kreuz-Zeilen direkt auf der
+// Karte — abstimmen geht ohne das Formular zu öffnen (onCardClick fängt Klicks
+// auf .umfrage-vote vor dem Karten-Klick-zum-Bearbeiten ab).
+function umfrageHtml(t) {
+  const stimmen = (t.umfrage && t.umfrage.stimmen) || {};
+  const meinName = currentUser ? currentUser.username : null;
+  const rows = t.umfrage.termine.map((c) => {
+    let ja = 0, nein = 0, meins = null;
+    Object.entries(stimmen).forEach(([user, votes]) => {
+      const v = votes ? votes[c.id] : null;
+      if (v === "ja") ja++; else if (v === "nein") nein++;
+      if (user === meinName) meins = v || null;
+    });
+    const dt = parseIso(c.datum);
+    return `
+      <div class="umfrage-row" data-cand-id="${escapeHtml(c.id)}">
+        <span class="umfrage-date">${escapeHtml(WOCHENTAGE[dt.getDay()])}, ${escapeHtml(fmtDate(c.datum))}</span>
+        <div class="umfrage-buttons">
+          <button type="button" class="umfrage-vote ja${meins === "ja" ? " active" : ""}" data-termin-id="${escapeHtml(t.id)}" data-cand-id="${escapeHtml(c.id)}" data-val="ja">✓ ${ja}</button>
+          <button type="button" class="umfrage-vote nein${meins === "nein" ? " active" : ""}" data-termin-id="${escapeHtml(t.id)}" data-cand-id="${escapeHtml(c.id)}" data-val="nein">✗ ${nein}</button>
+        </div>
+      </div>`;
+  }).join("");
+  return `<div class="umfrage-block"><div class="umfrage-hint">📊 Umfrage — bitte für passende Termine abstimmen</div>${rows}</div>`;
+}
+
 function terminCardHtml(t, isHero) {
   const start = t.datum;
   const end = terminEndIso(t);
@@ -131,6 +183,9 @@ function terminCardHtml(t, isHero) {
   const farbe = katFarbe(t.kategorie);
   const ort = t.ort ? `<div class="tc-sub">📍 ${escapeHtml(t.ort)}</div>` : "";
   const notiz = t.notiz ? `<div class="tc-notiz">${escapeHtml(t.notiz)}</div>` : "";
+  const umfrage = terminIsUmfrage(t);
+  const badges = `${umfrage ? `<span class="tc-badge tc-badge-umfrage">📊 Umfrage</span>` : ""}` +
+    `${t.privat ? `<span class="tc-badge tc-badge-privat">🔒 Privat</span>` : ""}`;
   return `
     <div class="termin-card${isHero ? " is-hero" : ""}" data-id="${escapeHtml(t.id)}" style="--kat:${escapeHtml(farbe)}">
       ${isHero ? `<div class="hero-label">Nächster Termin</div>` : ""}
@@ -139,12 +194,14 @@ function terminCardHtml(t, isHero) {
         <div class="tc-body">
           <div class="tc-top">
             <span class="kat-chip"><span class="kat-dot" style="background:${escapeHtml(farbe)}"></span>${escapeHtml(katName(t.kategorie))}</span>
-            <span class="tc-time">🕘 ${escapeHtml(terminZeitLabel(t))}</span>
+            ${umfrage ? "" : `<span class="tc-time">🕘 ${escapeHtml(terminZeitLabel(t))}</span>`}
+            ${badges}
           </div>
           <div class="tc-title">${escapeHtml(t.titel)}</div>
-          <div class="tc-sub tc-datespan">📅 ${escapeHtml(wochentagLabel(start))}, ${escapeHtml(terminDatumLabel(t))}</div>
+          ${umfrage ? "" : `<div class="tc-sub tc-datespan">📅 ${escapeHtml(wochentagLabel(start))}, ${escapeHtml(terminDatumLabel(t))}</div>`}
           ${ort}
           ${notiz}
+          ${umfrage ? umfrageHtml(t) : ""}
           ${anhaengeHtml(t)}
         </div>
       </div>
@@ -152,7 +209,7 @@ function terminCardHtml(t, isHero) {
 }
 
 function renderTermine() {
-  const upcoming = appData.termine.filter(isUpcoming).sort(sortTermine);
+  const upcoming = appData.termine.filter((t) => isUpcoming(t) && terminVisibleFor(t)).sort(sortTermine);
   const heroEl = document.getElementById("hero");
   const listEl = document.getElementById("termin-list");
   const emptyEl = document.getElementById("termine-empty");
@@ -232,8 +289,100 @@ function renderAnhangEditList() {
   ).join("");
 }
 
+// ---------- Teilen mit Nutzern/Gruppen (nur bei privaten Terminen) ----------
+async function ensureDirectoryLoaded() {
+  if (directoryUsers && directoryGroups) return;
+  try {
+    const dir = await fetchDirectory();
+    directoryUsers = Array.isArray(dir.users) ? dir.users : [];
+    directoryGroups = Array.isArray(dir.groups) ? dir.groups : [];
+  } catch (e) {
+    console.warn("Nutzer-/Gruppenverzeichnis konnte nicht geladen werden", e);
+    directoryUsers = directoryUsers || [];
+    directoryGroups = directoryGroups || [];
+  }
+}
+
+function renderShareUserChips() {
+  const el = document.getElementById("tf-user-chips");
+  if (pendingShareUsers.length === 0) { el.innerHTML = ""; return; }
+  el.innerHTML = pendingShareUsers.map((u, i) =>
+    `<span class="share-chip">${escapeHtml(u.displayName)}<button type="button" class="share-chip-remove" data-idx="${i}" aria-label="Entfernen">×</button></span>`
+  ).join("");
+}
+
+function renderShareGroupList() {
+  const el = document.getElementById("tf-group-list");
+  const groups = directoryGroups || [];
+  if (groups.length === 0) { el.innerHTML = `<span class="muted">Keine Gruppen vorhanden.</span>`; return; }
+  el.innerHTML = groups.map((g) =>
+    `<label class="check-label share-group-item"><input type="checkbox" class="tf-group-checkbox" value="${escapeHtml(g.id)}" ${pendingShareGroupIds.includes(g.id) ? "checked" : ""} /> ${escapeHtml(g.name)}</label>`
+  ).join("");
+}
+
+function onUserSearchInput(e) {
+  const q = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById("tf-user-results");
+  if (!q) { resultsEl.classList.add("hidden"); resultsEl.innerHTML = ""; return; }
+  const chosen = new Set(pendingShareUsers.map((u) => u.username));
+  const matches = (directoryUsers || [])
+    .filter((u) => !chosen.has(u.username) && (u.displayName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)))
+    .slice(0, 8);
+  if (matches.length === 0) { resultsEl.classList.add("hidden"); resultsEl.innerHTML = ""; return; }
+  resultsEl.innerHTML = matches.map((u) =>
+    `<div class="share-result" data-username="${escapeHtml(u.username)}" data-name="${escapeHtml(u.displayName)}">${escapeHtml(u.displayName)}</div>`
+  ).join("");
+  resultsEl.classList.remove("hidden");
+}
+
+function onUserResultClick(e) {
+  const el = e.target.closest(".share-result");
+  if (!el) return;
+  pendingShareUsers.push({ username: el.dataset.username, displayName: el.dataset.name });
+  document.getElementById("tf-user-search").value = "";
+  document.getElementById("tf-user-results").classList.add("hidden");
+  document.getElementById("tf-user-results").innerHTML = "";
+  renderShareUserChips();
+}
+
+function onShareChipsClick(e) {
+  const btn = e.target.closest(".share-chip-remove");
+  if (!btn) return;
+  pendingShareUsers.splice(parseInt(btn.dataset.idx, 10), 1);
+  renderShareUserChips();
+}
+
+// ---------- Umfrage-Terminvorschläge im Formular ----------
+function renderUmfrageEditList() {
+  const el = document.getElementById("tf-umfrage-termine");
+  if (pendingUmfrageTermine.length === 0) { el.innerHTML = `<span class="muted">Noch keine Terminvorschläge.</span>`; return; }
+  el.innerHTML = pendingUmfrageTermine.map((c, i) =>
+    `<div class="umfrage-edit-row">` +
+    `<input type="date" class="umfrage-cand-datum" data-idx="${i}" value="${escapeHtml(c.datum || "")}" />` +
+    `<button type="button" class="anhang-remove umfrage-cand-remove" data-idx="${i}" aria-label="Entfernen">×</button></div>`
+  ).join("");
+}
+
+function addUmfrageTermin() {
+  pendingUmfrageTermine.push({ id: uuid(), datum: "" });
+  renderUmfrageEditList();
+}
+
+function onUmfrageListInput(e) {
+  if (!e.target.classList.contains("umfrage-cand-datum")) return;
+  const idx = parseInt(e.target.dataset.idx, 10);
+  if (pendingUmfrageTermine[idx]) pendingUmfrageTermine[idx].datum = e.target.value;
+}
+
+function onUmfrageListClick(e) {
+  const btn = e.target.closest(".umfrage-cand-remove");
+  if (!btn) return;
+  pendingUmfrageTermine.splice(parseInt(btn.dataset.idx, 10), 1);
+  renderUmfrageEditList();
+}
+
 // ---------- Termin-Formular ----------
-function openTerminModal(idOrNew) {
+async function openTerminModal(idOrNew) {
   if (!canEdit()) return;
   const t = (typeof idOrNew === "string") ? appData.termine.find((x) => x.id === idOrNew) : null;
   editingTerminId = t ? t.id : null;
@@ -253,8 +402,31 @@ function openTerminModal(idOrNew) {
   document.getElementById("tf-startzeit").value = (t && t.startZeit) ? t.startZeit : "";
   document.getElementById("tf-endzeit").value = (t && t.endZeit) ? t.endZeit : "";
   document.getElementById("tf-notiz").value = t ? (t.notiz || "") : "";
-  updateGanztagsUi();
   renderAnhangEditList();
+
+  pendingUmfrageTermine = (t && terminIsUmfrage(t))
+    ? t.umfrage.termine.map((c) => ({ id: c.id, datum: c.datum }))
+    : [];
+  document.getElementById("tf-umfrage").checked = pendingUmfrageTermine.length > 0;
+  renderUmfrageEditList();
+
+  document.getElementById("tf-privat").checked = t ? !!t.privat : false;
+  pendingShareGroupIds = (t && Array.isArray(t.geteiltGruppen)) ? t.geteiltGruppen.slice() : [];
+  pendingShareUsers = [];
+  document.getElementById("tf-user-search").value = "";
+  document.getElementById("tf-user-results").classList.add("hidden");
+  document.getElementById("tf-user-results").innerHTML = "";
+  await ensureDirectoryLoaded();
+  if (t && Array.isArray(t.geteiltUsers)) {
+    pendingShareUsers = t.geteiltUsers.map((u) => {
+      const found = (directoryUsers || []).find((d) => d.username === u);
+      return { username: u, displayName: found ? found.displayName : u };
+    });
+  }
+  renderShareUserChips();
+  renderShareGroupList();
+
+  updateFormModeUi();
 
   document.getElementById("termin-modal-title").textContent = t ? "Termin bearbeiten" : "Neuer Termin";
   document.getElementById("btn-delete-termin").classList.toggle("hidden", !t);
@@ -262,9 +434,19 @@ function openTerminModal(idOrNew) {
   document.getElementById("tf-titel").focus();
 }
 
-function updateGanztagsUi() {
+// Blendet Datum/Enddatum/Ganztägig gegen die Terminvorschlagsliste um, sobald
+// "Umfrage aktivieren" angehakt ist, und das Teilen-Feld gegen "Privattermin".
+function updateFormModeUi() {
+  const umfrage = document.getElementById("tf-umfrage").checked;
   const ganz = document.getElementById("tf-ganztags").checked;
-  document.getElementById("tf-zeit-grid").classList.toggle("hidden", ganz);
+  document.getElementById("tf-datum-field").classList.toggle("hidden", umfrage);
+  document.getElementById("tf-enddatum-field").classList.toggle("hidden", umfrage);
+  document.getElementById("tf-ganztags-field").classList.toggle("hidden", umfrage);
+  document.getElementById("tf-zeit-grid").classList.toggle("hidden", umfrage || ganz);
+  document.getElementById("tf-umfrage-wrap").classList.toggle("hidden", !umfrage);
+
+  const privat = document.getElementById("tf-privat").checked;
+  document.getElementById("tf-teilen-wrap").classList.toggle("hidden", !privat);
 }
 
 function closeTerminModal() {
@@ -272,27 +454,52 @@ function closeTerminModal() {
   editingTerminId = null;
   pendingAnhaenge = [];
   removedExistingIds = [];
+  pendingShareUsers = [];
+  pendingShareGroupIds = [];
+  pendingUmfrageTermine = [];
 }
 
 async function saveTermin() {
   const titel = document.getElementById("tf-titel").value.trim();
   const kategorie = document.getElementById("tf-kategorie").value;
   const ort = document.getElementById("tf-ort").value.trim();
-  const datum = document.getElementById("tf-datum").value;
-  let endDatum = document.getElementById("tf-enddatum").value;
-  const ganztags = document.getElementById("tf-ganztags").checked;
-  const startZeit = ganztags ? "" : document.getElementById("tf-startzeit").value;
-  const endZeit = ganztags ? "" : document.getElementById("tf-endzeit").value;
   const notiz = document.getElementById("tf-notiz").value.trim();
+  const umfrageAktiv = document.getElementById("tf-umfrage").checked;
+  const privat = document.getElementById("tf-privat").checked;
 
   if (!titel) { alert("Bitte einen Titel eingeben."); return; }
-  if (!ISO_RE.test(datum)) { alert("Bitte ein gültiges Datum wählen."); return; }
-  if (endDatum && !ISO_RE.test(endDatum)) { alert("Bitte ein gültiges Enddatum wählen."); return; }
-  if (endDatum && endDatum < datum) { alert("Das Enddatum darf nicht vor dem Datum liegen."); return; }
-  if (endDatum && endDatum <= datum) endDatum = ""; // gleich/kleiner => eintägig
-  const effGanztags = ganztags || (!startZeit && !endZeit);
-  if (!effGanztags && startZeit && endZeit && !endDatum && endZeit <= startZeit) {
-    alert("Die Endzeit muss nach der Startzeit liegen."); return;
+
+  let datum, endDatum, ganztags, startZeit, endZeit, umfrageCandidates = null;
+
+  if (umfrageAktiv) {
+    const rows = Array.from(document.querySelectorAll(".umfrage-cand-datum")).map((el) => el.value);
+    const validDates = [...new Set(rows.filter((d) => ISO_RE.test(d)))].sort();
+    if (validDates.length === 0) { alert("Bitte mindestens einen gültigen Terminvorschlag eintragen."); return; }
+    // Bestehende Ids anhand des Datums wiederverwenden, damit Stimmen bei
+    // unveränderten Vorschlägen erhalten bleiben; neue Vorschläge bekommen neue Ids.
+    umfrageCandidates = validDates.map((d) => {
+      const existing = pendingUmfrageTermine.find((c) => c.datum === d);
+      return { id: existing ? existing.id : uuid(), datum: d };
+    });
+    datum = validDates[0];
+    endDatum = validDates[validDates.length - 1] === datum ? "" : validDates[validDates.length - 1];
+    ganztags = true;
+    startZeit = ""; endZeit = "";
+  } else {
+    datum = document.getElementById("tf-datum").value;
+    endDatum = document.getElementById("tf-enddatum").value;
+    const ganztagsChecked = document.getElementById("tf-ganztags").checked;
+    startZeit = ganztagsChecked ? "" : document.getElementById("tf-startzeit").value;
+    endZeit = ganztagsChecked ? "" : document.getElementById("tf-endzeit").value;
+
+    if (!ISO_RE.test(datum)) { alert("Bitte ein gültiges Datum wählen."); return; }
+    if (endDatum && !ISO_RE.test(endDatum)) { alert("Bitte ein gültiges Enddatum wählen."); return; }
+    if (endDatum && endDatum < datum) { alert("Das Enddatum darf nicht vor dem Datum liegen."); return; }
+    if (endDatum && endDatum <= datum) endDatum = ""; // gleich/kleiner => eintägig
+    ganztags = ganztagsChecked || (!startZeit && !endZeit);
+    if (!ganztags && startZeit && endZeit && !endDatum && endZeit <= startZeit) {
+      alert("Die Endzeit muss nach der Startzeit liegen."); return;
+    }
   }
 
   const btn = document.getElementById("btn-save-termin");
@@ -312,6 +519,7 @@ async function saveTermin() {
     }
 
     let t = editingTerminId ? appData.termine.find((x) => x.id === editingTerminId) : null;
+    const isNew = !t;
     if (!t) { t = { id: uuid() }; appData.termine.push(t); }
     // vorhandene Felder ersetzen (undefined bewusst weglassen)
     t.titel = titel;
@@ -319,11 +527,17 @@ async function saveTermin() {
     t.ort = ort || undefined;
     t.datum = datum;
     t.endDatum = endDatum || undefined;
-    t.ganztags = effGanztags;
-    t.startZeit = effGanztags ? undefined : (startZeit || undefined);
-    t.endZeit = effGanztags ? undefined : (endZeit || undefined);
+    t.ganztags = ganztags;
+    t.startZeit = ganztags ? undefined : (startZeit || undefined);
+    t.endZeit = ganztags ? undefined : (endZeit || undefined);
     t.notiz = notiz || undefined;
     t.anhaenge = anhaenge;
+    t.umfrage = umfrageAktiv ? { aktiv: true, termine: umfrageCandidates, stimmen: (t.umfrage && t.umfrage.stimmen) || {} } : undefined;
+    t.privat = privat || undefined;
+    const geteiltGruppen = Array.from(document.querySelectorAll(".tf-group-checkbox:checked")).map((el) => el.value);
+    t.geteiltUsers = (privat && pendingShareUsers.length) ? pendingShareUsers.map((u) => u.username) : undefined;
+    t.geteiltGruppen = (privat && geteiltGruppen.length) ? geteiltGruppen : undefined;
+    if (isNew && currentUser) t.ersteller = currentUser.username;
 
     // Entfernte bestehende Anhänge physisch löschen (best-effort).
     for (const id of removedExistingIds) await gatewayDeleteFile(id);
@@ -337,6 +551,48 @@ async function saveTermin() {
     else { console.error("Speichern fehlgeschlagen", e); setSaveStatus("Nicht gespeichert", "error"); alert("Speichern fehlgeschlagen: " + e.message); }
   } finally {
     btn.disabled = false;
+  }
+}
+
+// ---------- Umfrage: Abstimmen direkt auf der Terminkarte ----------
+// Bei Konflikt (409) wird der eigene Stimmversuch NICHT mit dem lauten
+// reloadAfterConflict()-Hinweis verworfen (Abstimm-Kollisionen sind bei mehreren
+// gleichzeitigen Wählern erwartbar), sondern still einmal auf dem frisch
+// geladenen Stand wiederholt.
+async function castVote(terminId, candId, val) {
+  if (!currentUser) return;
+  const applyVote = () => {
+    const t = appData.termine.find((x) => x.id === terminId);
+    if (!t || !terminIsUmfrage(t)) return false;
+    if (!t.umfrage.stimmen) t.umfrage.stimmen = {};
+    if (!t.umfrage.stimmen[currentUser.username]) t.umfrage.stimmen[currentUser.username] = {};
+    const mine = t.umfrage.stimmen[currentUser.username];
+    if (mine[candId] === val) delete mine[candId]; else mine[candId] = val;
+    return true;
+  };
+  if (!applyVote()) return;
+  renderTermine();
+  try {
+    await gatewaySaveWithStand();
+  } catch (e) {
+    if (e instanceof ConflictError) {
+      try {
+        const data = await gatewayLoad();
+        appData = normalizeData(data);
+        applyVote();
+        await gatewaySaveWithStand();
+        renderAll();
+      } catch (e2) {
+        console.error("Abstimmen fehlgeschlagen", e2);
+        setSaveStatus("Nicht gespeichert", "error");
+        alert("Deine Stimme konnte nicht gespeichert werden: " + e2.message);
+        renderAll();
+      }
+    } else {
+      console.error("Abstimmen fehlgeschlagen", e);
+      setSaveStatus("Nicht gespeichert", "error");
+      alert("Deine Stimme konnte nicht gespeichert werden: " + e.message);
+    }
   }
 }
 
@@ -530,7 +786,19 @@ function setupListeners() {
   document.getElementById("btn-delete-termin").addEventListener("click", deleteTermin);
   document.getElementById("termin-modal").addEventListener("click", (e) => { if (e.target.id === "termin-modal") closeTerminModal(); });
   document.getElementById("termin-form").addEventListener("submit", (e) => { e.preventDefault(); saveTermin(); });
-  document.getElementById("tf-ganztags").addEventListener("change", updateGanztagsUi);
+  document.getElementById("tf-ganztags").addEventListener("change", updateFormModeUi);
+  document.getElementById("tf-umfrage").addEventListener("change", updateFormModeUi);
+  document.getElementById("tf-privat").addEventListener("change", updateFormModeUi);
+
+  // Umfrage-Terminvorschläge im Formular
+  document.getElementById("btn-add-umfrage-termin").addEventListener("click", addUmfrageTermin);
+  document.getElementById("tf-umfrage-termine").addEventListener("input", onUmfrageListInput);
+  document.getElementById("tf-umfrage-termine").addEventListener("click", onUmfrageListClick);
+
+  // Teilen mit Nutzern/Gruppen im Formular
+  document.getElementById("tf-user-search").addEventListener("input", onUserSearchInput);
+  document.getElementById("tf-user-results").addEventListener("click", onUserResultClick);
+  document.getElementById("tf-user-chips").addEventListener("click", onShareChipsClick);
 
   // Anhänge im Formular
   document.getElementById("btn-add-anhang").addEventListener("click", () => document.getElementById("anhang-file-input").click());
@@ -563,6 +831,8 @@ function setupListeners() {
 }
 
 function onCardClick(e) {
+  const vote = e.target.closest(".umfrage-vote");
+  if (vote) { castVote(vote.dataset.terminId, vote.dataset.candId, vote.dataset.val); return; }
   const anhang = e.target.closest(".anhang");
   if (anhang) { downloadAnhang(anhang.dataset.fileId, anhang.dataset.fileName); return; }
   const card = e.target.closest(".termin-card");

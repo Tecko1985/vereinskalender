@@ -186,6 +186,30 @@ body.can-edit .termin-card:hover { background: var(--blue-light); }
 .kat-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
 .kat-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
 
+.tc-badge {
+  display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+  border-radius: 999px; padding: 3px 10px;
+}
+.tc-badge-umfrage { background: var(--gold-light); color: var(--gold); }
+.tc-badge-privat { background: var(--gray); color: var(--muted); }
+
+/* ---------- Umfrage: Abstimmen auf der Karte ---------- */
+.umfrage-block { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.umfrage-hint { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+.umfrage-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--gray); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+}
+.umfrage-date { font-size: 13px; font-weight: 600; }
+.umfrage-buttons { display: flex; gap: 6px; flex: 0 0 auto; }
+.umfrage-vote {
+  border: 1px solid var(--border); background: var(--white); border-radius: 6px;
+  padding: 4px 10px; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--muted);
+}
+.umfrage-vote.ja.active { background: var(--green); border-color: var(--green); color: white; }
+.umfrage-vote.nein.active { background: var(--red); border-color: var(--red); color: white; }
+.umfrage-vote:hover { opacity: 0.85; }
+
 .tc-anhaenge { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .anhang {
   background: var(--blue-light); color: var(--blue); border: 1px solid #cfe0f5;
@@ -222,6 +246,34 @@ body.can-edit .termin-card:hover { background: var(--blue-light); }
 .kategorie-add-row input[type="text"] { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 14px; font-family: inherit; }
 .kategorie-row input[type="color"], .kategorie-add-row input[type="color"] {
   width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 6px; flex: 0 0 auto; cursor: pointer;
+}
+
+.form-sep { border: none; border-top: 1px solid var(--border); margin: 4px 0 16px; }
+
+/* ---------- Umfrage-Terminvorschläge im Formular ---------- */
+.umfrage-edit-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.umfrage-edit-row { display: flex; align-items: center; gap: 10px; }
+.umfrage-edit-row .umfrage-cand-datum { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; }
+
+/* ---------- Teilen mit Nutzern/Gruppen ---------- */
+.share-search-box { position: relative; }
+.share-search-box input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; }
+.share-results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5;
+  background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+  max-height: 200px; overflow-y: auto;
+}
+.share-result { padding: 8px 12px; font-size: 14px; cursor: pointer; }
+.share-result:hover { background: var(--blue-light); }
+.share-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.share-chip {
+  display: inline-flex; align-items: center; gap: 6px; background: var(--blue-light); color: var(--blue);
+  border: 1px solid #cfe0f5; border-radius: 999px; padding: 5px 8px 5px 12px; font-size: 13px; font-weight: 600;
+}
+.share-chip-remove { background: none; border: none; color: var(--blue); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.share-group-list { display: flex; flex-direction: column; gap: 6px; }
+.share-group-item {
+  background: var(--gray); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-weight: 500 !important;
 }
 
 .modal-overlay {

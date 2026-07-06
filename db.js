@@ -65,6 +65,13 @@ async function fetchMe() {
   return gatewayRequest({ action: "me", app: GATEWAY_APP_ID });
 }
 
+// Liefert {users:[{username,displayName}], groups:[{id,name}]} für den
+// "Teilen mit"-Picker bei privaten Terminen/Umfragen — für jeden eingeloggten
+// Nutzer abrufbar, keine sensiblen Felder.
+async function fetchDirectory() {
+  return gatewayRequest({ action: "list-directory" });
+}
+
 // ---------- Datei-Anhänge (Binär-Upload über das Gateway) ----------
 
 // Liest eine Datei als reines base64 (ohne data:-Präfix) für den Transport im
