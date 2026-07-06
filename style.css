@@ -182,7 +182,7 @@ body.can-edit .termin-card:hover { background: var(--blue-light); }
 .is-hero .tc-title { font-size: 19px; }
 .tc-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
 .tc-notiz { font-size: 13px; color: var(--text); margin-top: 6px; white-space: pre-wrap; }
-.tc-meta { font-size: 11px; color: var(--muted); margin-top: 10px; }
+.tc-meta { font-size: 14px; color: var(--muted); margin-top: 10px; }
 
 .kat-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
 .kat-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
