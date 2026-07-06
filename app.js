@@ -164,14 +164,49 @@ function umfrageHtml(t) {
     const dt = parseIso(c.datum);
     return `
       <div class="umfrage-row" data-cand-id="${escapeHtml(c.id)}">
-        <span class="umfrage-date">${escapeHtml(WOCHENTAGE[dt.getDay()])}, ${escapeHtml(fmtDate(c.datum))}</span>
-        <div class="umfrage-buttons">
-          <button type="button" class="umfrage-vote ja${meins === "ja" ? " active" : ""}" data-termin-id="${escapeHtml(t.id)}" data-cand-id="${escapeHtml(c.id)}" data-val="ja">✓ ${ja}</button>
-          <button type="button" class="umfrage-vote nein${meins === "nein" ? " active" : ""}" data-termin-id="${escapeHtml(t.id)}" data-cand-id="${escapeHtml(c.id)}" data-val="nein">✗ ${nein}</button>
+        <div class="umfrage-row-main">
+          <span class="umfrage-date">${escapeHtml(WOCHENTAGE[dt.getDay()])}, ${escapeHtml(fmtDate(c.datum))}</span>
+          <div class="umfrage-buttons">
+            <button type="button" class="umfrage-vote ja${meins === "ja" ? " active" : ""}" data-termin-id="${escapeHtml(t.id)}" data-cand-id="${escapeHtml(c.id)}" data-val="ja">✓ ${ja}</button>
+            <button type="button" class="umfrage-vote nein${meins === "nein" ? " active" : ""}" data-termin-id="${escapeHtml(t.id)}" data-cand-id="${escapeHtml(c.id)}" data-val="nein">✗ ${nein}</button>
+            <button type="button" class="umfrage-details-toggle" data-termin-id="${escapeHtml(t.id)}" data-cand-id="${escapeHtml(c.id)}" aria-label="Zu-/Absagen einsehen" title="Zu-/Absagen einsehen">👥</button>
+          </div>
         </div>
+        <div class="umfrage-details hidden"></div>
       </div>`;
   }).join("");
   return `<div class="umfrage-block"><div class="umfrage-hint">📊 Umfrage — bitte für passende Termine abstimmen</div>${rows}</div>`;
+}
+
+// Löst einen Nutzernamen über das (lazy geladene) Verzeichnis in einen
+// Anzeigenamen auf; Fallback auf den rohen Nutzernamen, falls unbekannt.
+function displayNameFor(username) {
+  const found = (directoryUsers || []).find((u) => u.username === username);
+  return found ? found.displayName : username;
+}
+
+// Zeigt/versteckt die Liste der Zu-/Absager einer Umfrage-Terminzeile. Lädt das
+// Nutzerverzeichnis bei Bedarf nach (auch für Nicht-Bearbeiter, die bislang noch
+// keins geladen haben) — Namen werden erst beim ersten Aufklappen aufgelöst.
+async function toggleUmfrageDetails(terminId, candId, rowEl) {
+  if (!rowEl) return;
+  const detailsEl = rowEl.querySelector(".umfrage-details");
+  if (!detailsEl.classList.contains("hidden")) { detailsEl.classList.add("hidden"); return; }
+
+  await ensureDirectoryLoaded();
+  const t = appData.termine.find((x) => x.id === terminId);
+  if (!t || !t.umfrage) return;
+  const stimmen = t.umfrage.stimmen || {};
+  const ja = [], nein = [];
+  Object.entries(stimmen).forEach(([user, votes]) => {
+    const v = votes ? votes[candId] : null;
+    if (v === "ja") ja.push(displayNameFor(user));
+    else if (v === "nein") nein.push(displayNameFor(user));
+  });
+  detailsEl.innerHTML =
+    `<div><strong>✓ Zusagen:</strong> ${ja.length ? ja.map(escapeHtml).join(", ") : "—"}</div>` +
+    `<div><strong>✗ Absagen:</strong> ${nein.length ? nein.map(escapeHtml).join(", ") : "—"}</div>`;
+  detailsEl.classList.remove("hidden");
 }
 
 function terminCardHtml(t, isHero) {
@@ -837,6 +872,8 @@ function setupListeners() {
 }
 
 function onCardClick(e) {
+  const detailsBtn = e.target.closest(".umfrage-details-toggle");
+  if (detailsBtn) { toggleUmfrageDetails(detailsBtn.dataset.terminId, detailsBtn.dataset.candId, detailsBtn.closest(".umfrage-row")); return; }
   const vote = e.target.closest(".umfrage-vote");
   if (vote) { castVote(vote.dataset.terminId, vote.dataset.candId, vote.dataset.val); return; }
   const anhang = e.target.closest(".anhang");

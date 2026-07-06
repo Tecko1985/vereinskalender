@@ -1,4 +1,4 @@
-const APP_VERSION = "1.7";
+const APP_VERSION = "1.8";
 
 // Größenlimit pro hochgeladener Datei. base64 im Request bläht ~+33 % auf, bleibt
 // damit klar unter dem Cloudflare-Free-Limit. Muss zum Worker-Cap passen.
@@ -15,6 +15,17 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.8",
+    groups: [
+      {
+        title: "Umfrage-Termine",
+        items: [
+          "Neuer Button (👥) je Terminvorschlag zeigt die Namen der Zu- und Absagen an."
+        ]
+      }
+    ]
+  },
   {
     version: "1.7",
     groups: [

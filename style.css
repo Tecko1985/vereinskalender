@@ -197,11 +197,12 @@ body.can-edit .termin-card:hover { background: var(--blue-light); }
 .umfrage-block { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .umfrage-hint { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
 .umfrage-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  display: flex; flex-direction: column; gap: 8px;
   background: var(--gray); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
 }
+.umfrage-row-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .umfrage-date { font-size: 13px; font-weight: 600; }
-.umfrage-buttons { display: flex; gap: 6px; flex: 0 0 auto; }
+.umfrage-buttons { display: flex; gap: 6px; flex: 0 0 auto; align-items: center; }
 .umfrage-vote {
   border: 1px solid var(--border); background: var(--white); border-radius: 6px;
   padding: 4px 10px; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--muted);
@@ -209,6 +210,16 @@ body.can-edit .termin-card:hover { background: var(--blue-light); }
 .umfrage-vote.ja.active { background: var(--green); border-color: var(--green); color: white; }
 .umfrage-vote.nein.active { background: var(--red); border-color: var(--red); color: white; }
 .umfrage-vote:hover { opacity: 0.85; }
+.umfrage-details-toggle {
+  border: 1px solid var(--border); background: var(--white); border-radius: 6px;
+  padding: 4px 8px; font-size: 13px; cursor: pointer; color: var(--muted);
+}
+.umfrage-details-toggle:hover { background: var(--blue-light); }
+.umfrage-details {
+  font-size: 12px; color: var(--text); line-height: 1.6;
+  border-top: 1px dashed var(--border); padding-top: 8px;
+}
+.umfrage-details strong { color: var(--muted); font-weight: 700; }
 
 .tc-anhaenge { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .anhang {
