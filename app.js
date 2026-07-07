@@ -298,7 +298,7 @@ function renderTermine() {
 }
 
 function renderVersionInfo() {
-  document.querySelectorAll("#version-badge, #version-badge-2, #version-badge-nav").forEach((el) => { if (el) el.textContent = "v" + APP_VERSION; });
+  document.querySelectorAll("#version-badge, #version-badge-2").forEach((el) => { if (el) el.textContent = "v" + APP_VERSION; });
   const list = document.getElementById("changelog-list");
   if (!list) return;
   list.innerHTML = APP_CHANGELOG.map((entry) => `
