@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>📅 Vereinskalender</title>
+<meta name="theme-color" content="#1a56a0" />
+<link rel="stylesheet" href="style.css?v=1.0" />
+</head>
+<body>
+
+  <div class="connect-screen" id="connect-screen">
+    <div class="card">
+      <h2>📅 Vereinskalender</h2>
+      <p id="connect-message">Bitte über die Tools-Übersicht anmelden, um die anstehenden Vereinstermine zu sehen.</p>
+      <div class="btn-row">
+        <a class="btn" href="https://tecko1985.github.io/ToolsUebersicht/">Zur Tools-Übersicht</a>
+      </div>
+      <p class="muted" id="cloud-error" style="margin-top:14px;"></p>
+    </div>
+  </div>
+
+  <div id="app-shell" style="display:none;">
+    <header>
+      <h1>📅 Vereinskalender <span class="version-badge version-badge-link" id="version-badge" role="button" tabindex="0" title="Versionshistorie ansehen"></span></h1>
+      <a href="https://tecko1985.github.io/ToolsUebersicht/" class="back-to-dashboard">← Zurück zum Dashboard</a>
+      <div class="header-right">
+        <span class="header-status" id="save-status"></span>
+        <span class="header-user" id="header-user"></span>
+        <img class="header-logo" src="logo.png" alt="1. SC 1911 e.V. Heilbad Heiligenstadt" />
+      </div>
+    </header>
+
+    <nav>
+      <button data-tab="termine" class="active">Termine</button>
+      <button data-tab="info">Info</button>
+      <button data-tab="einstellungen" class="editor-only hidden" style="margin-left:auto;">Einstellungen</button>
+    </nav>
+
+    <main>
+
+      <!-- ---------- Termine ---------- -->
+      <section class="tab-section active" id="tab-termine">
+        <div class="toolbar">
+          <div>
+            <h2 class="section-title">Anstehende Termine</h2>
+            <span class="filter-count" id="termine-count"></span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn small editor-only hidden" id="btn-new-termin">+ Neuer Termin</button>
+          </div>
+        </div>
+
+        <div id="hero"></div>
+
+        <h3 class="weitere-heading hidden" id="weitere-heading">Weitere Termine</h3>
+        <div id="termin-list"></div>
+
+        <div class="empty-state hidden" id="termine-empty">
+          Aktuell sind keine anstehenden Termine eingetragen.
+        </div>
+      </section>
+
+      <!-- ---------- Info ---------- -->
+      <section class="tab-section" id="tab-info">
+        <div class="card">
+          <h2>Über den Vereinskalender <span class="version-badge" id="version-badge-2"></span></h2>
+          <p class="muted">
+            Hier siehst du die als Nächstes anstehenden Vereinstermine — z. B. gesperrte Hallen oder
+            Plätze, Trainingszeiten und Veranstaltungen. Vergangene Termine verschwinden automatisch.
+          </p>
+          <p class="muted" id="info-user" style="margin-top:10px;"></p>
+        </div>
+        <div class="card">
+          <h2>Änderungen</h2>
+          <div id="changelog-list"></div>
+        </div>
+      </section>
+
+      <!-- ---------- Einstellungen ---------- -->
+      <section class="tab-section" id="tab-einstellungen">
+        <div class="card">
+          <h2>Kategorien</h2>
+          <p class="muted" style="margin-bottom:14px;">
+            Diese Kategorien stehen im Termin-Formular als Auswahl zur Verfügung und bestimmen die Farbe,
+            mit der ein Termin in der Liste angezeigt wird.
+          </p>
+          <div class="kategorie-list" id="kategorie-list"></div>
+          <div class="kategorie-add-row">
+            <input type="color" id="neue-kategorie-farbe" value="#6b7280" title="Farbe" />
+            <input type="text" id="neue-kategorie-name" placeholder="Neue Kategorie…" maxlength="60" />
+            <button type="button" class="btn small" id="btn-kategorie-add">+ Hinzufügen</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ---------- Termin-Formular ---------- -->
+  <div class="modal-overlay hidden" id="termin-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="termin-modal-title">Neuer Termin</h2>
+        <button class="modal-close" id="termin-modal-close" aria-label="Schließen">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="termin-form">
+          <div class="form-grid">
+            <div class="form-field wide"><label>Titel *</label><input type="text" id="tf-titel" placeholder="z. B. Kunstrasen gesperrt" /></div>
+            <div class="form-field"><label>Kategorie</label><select id="tf-kategorie"></select></div>
+            <div class="form-field"><label>Ort / Platz</label><input type="text" id="tf-ort" placeholder="optional, z. B. KuRa Rechts" /></div>
+            <div class="form-field" id="tf-datum-field"><label>Datum *</label><input type="date" id="tf-datum" /></div>
+            <div class="form-field" id="tf-enddatum-field"><label>Enddatum (mehrtägig)</label><input type="date" id="tf-enddatum" /></div>
+          </div>
+          <div class="form-field wide" style="margin-bottom:10px;" id="tf-ganztags-field">
+            <label class="check-label"><input type="checkbox" id="tf-ganztags" /> Ganztägig (ohne Uhrzeit)</label>
+          </div>
+          <div class="form-grid" id="tf-zeit-grid">
+            <div class="form-field"><label>Von (Uhrzeit)</label><input type="time" id="tf-startzeit" /></div>
+            <div class="form-field"><label>Bis (Uhrzeit)</label><input type="time" id="tf-endzeit" /></div>
+          </div>
+          <div class="form-field wide"><label>Notiz</label><input type="text" id="tf-notiz" placeholder="optional" /></div>
+
+          <div class="form-field wide">
+            <label>Dateien (PDF, Bild o. Ä.)</label>
+            <div class="anhang-edit-list" id="tf-anhaenge"></div>
+            <button type="button" class="btn secondary small editor-only" id="btn-add-anhang">📎 Datei hinzufügen</button>
+            <input type="file" id="anhang-file-input" class="hidden" />
+          </div>
+
+          <hr class="form-sep" />
+
+          <div class="form-field wide" style="margin-bottom:10px;">
+            <label class="check-label"><input type="checkbox" id="tf-umfrage" /> Umfrage aktivieren (mehrere Terminvorschläge, es wird abgestimmt)</label>
+          </div>
+          <div class="form-field wide hidden" id="tf-umfrage-wrap">
+            <label>Terminvorschläge</label>
+            <div class="umfrage-edit-list" id="tf-umfrage-termine"></div>
+            <button type="button" class="btn secondary small" id="btn-add-umfrage-termin">+ Terminvorschlag hinzufügen</button>
+          </div>
+
+          <div class="form-field wide" style="margin-bottom:10px;">
+            <label class="check-label"><input type="checkbox" id="tf-privat" /> Privattermin (nur für mich sichtbar)</label>
+          </div>
+          <div class="form-field wide hidden" id="tf-teilen-wrap">
+            <label>Zusätzlich sichtbar für (Personen)</label>
+            <div class="share-search-box">
+              <input type="text" id="tf-user-search" placeholder="Name oder Nutzername suchen…" autocomplete="off" />
+              <div class="share-results hidden" id="tf-user-results"></div>
+            </div>
+            <div class="share-chips" id="tf-user-chips"></div>
+            <label style="margin-top:12px;">Zusätzlich sichtbar für (Gruppen)</label>
+            <div class="share-group-list" id="tf-group-list"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn danger hidden" id="btn-delete-termin">Löschen</button>
+        <div class="btn-row">
+          <button class="btn secondary" id="btn-cancel-termin">Abbrechen</button>
+          <button class="btn success" id="btn-save-termin">Speichern</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js?v=1.0"></script>
+  <script src="db.js?v=1.0"></script>
+  <script src="app.js?v=1.0"></script>
+</body>
+</html>
