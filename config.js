@@ -16,6 +16,17 @@ const DEFAULT_KATEGORIEN = [
 
 const APP_CHANGELOG = [
   {
+    version: "1.1",
+    groups: [
+      {
+        title: "Privattermine & Teilen",
+        items: [
+          "Personen, mit denen ein privater Termin geteilt wird, bekommen jetzt zusätzlich eine kurze E-Mail-Benachrichtigung (beim erstmaligen Teilen und bei späteren Änderungen des Termins)."
+        ]
+      }
+    ]
+  },
+  {
     version: "1.0",
     groups: [
       {

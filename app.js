@@ -570,6 +570,14 @@ async function saveTermin() {
 
     let t = editingTerminId ? appData.termine.find((x) => x.id === editingTerminId) : null;
     const isNew = !t;
+    // Schnappschuss VOR den Feld-Mutationen unten (t ist dieselbe Objektreferenz
+    // wie in appData.termine, kein Klon) -- Grundlage für den Teilen-/Änderungs-
+    // Abgleich in notifyShareTargets() nach dem Speichern.
+    const before = t ? {
+      geteiltUsers: Array.isArray(t.geteiltUsers) ? t.geteiltUsers.slice() : [],
+      titel: t.titel, datum: t.datum, endDatum: t.endDatum,
+      ort: t.ort, startZeit: t.startZeit, endZeit: t.endZeit
+    } : null;
     if (!t) { t = { id: uuid() }; appData.termine.push(t); }
     // vorhandene Felder ersetzen (undefined bewusst weglassen)
     t.titel = titel;
@@ -596,6 +604,9 @@ async function saveTermin() {
     for (const id of removedExistingIds) await gatewayDeleteFile(id);
 
     await gatewaySaveWithStand();
+    // Best-effort, NACH erfolgreichem Speichern -- ein Mail-Fehler darf den schon
+    // gespeicherten Termin nie als "nicht gespeichert" erscheinen lassen.
+    try { await notifyShareTargets(t, before); } catch (e) { console.warn("Teilen-Benachrichtigung fehlgeschlagen", e); }
     renderAll();
     closeTerminModal();
   } catch (e) {
@@ -604,6 +615,49 @@ async function saveTermin() {
     else { console.error("Speichern fehlgeschlagen", e); setSaveStatus("Nicht gespeichert", "error"); alert("Speichern fehlgeschlagen: " + e.message); }
   } finally {
     btn.disabled = false;
+  }
+}
+
+// ---------- Private Termine: E-Mail-Hinweis bei (erstmaligem) Teilen oder Änderung ----------
+// Trigger: Nutzer NEU in geteiltUsers ("geteilt") ODER bereits geteilt UND
+// sichtbarer Inhalt hat sich geändert ("geändert"). Kein Hinweis beim Entfernen
+// aus geteiltUsers oder wenn der Termin gar nicht (mehr) privat ist. Adresse wird
+// serverseitig über den Nutzernamen aufgelöst (Aktion "notify-user", siehe
+// admin-worker.js) -- diese App kennt selbst keine E-Mail-Adressen.
+async function notifyShareTargets(t, before) {
+  if (!t.privat) return;
+  const now = Array.isArray(t.geteiltUsers) ? t.geteiltUsers : [];
+  const prev = before ? before.geteiltUsers : [];
+  const neu = now.filter((u) => !prev.includes(u));
+  const bestehend = now.filter((u) => prev.includes(u));
+  if (!neu.length && !bestehend.length) return;
+
+  const inhaltGeaendert = !!before && (
+    before.titel !== t.titel || before.datum !== t.datum || before.endDatum !== t.endDatum ||
+    before.ort !== t.ort || before.startZeit !== t.startZeit || before.endZeit !== t.endZeit
+  );
+
+  const von = (currentUser && currentUser.vorname && currentUser.nachname)
+    ? `${currentUser.vorname} ${currentUser.nachname}` : "Jemand";
+  const link = "https://tecko1985.github.io/vereinskalender/";
+
+  const sende = async (username, subject, message) => {
+    try {
+      await gatewayRequest({ action: "notify-user", username, subject, message });
+    } catch (e) {
+      console.warn("Benachrichtigung fehlgeschlagen für", username, e);
+    }
+  };
+
+  for (const u of neu) {
+    await sende(u, "Neuer privater Termin im Vereinskalender",
+      `${von} hat einen privaten Termin mit dir geteilt: "${t.titel}". Bitte im Vereinskalender ansehen: ${link}`);
+  }
+  if (inhaltGeaendert) {
+    for (const u of bestehend) {
+      await sende(u, "Privater Termin geändert: " + t.titel,
+        `${von} hat einen mit dir geteilten privaten Termin geändert: "${t.titel}". Bitte im Vereinskalender ansehen: ${link}`);
+    }
   }
 }
 
