@@ -16,17 +16,6 @@ const DEFAULT_KATEGORIEN = [
 
 const APP_CHANGELOG = [
   {
-    version: "1.1",
-    groups: [
-      {
-        title: "Privattermine & Teilen",
-        items: [
-          "Personen, mit denen ein privater Termin geteilt wird, bekommen jetzt zusätzlich eine kurze E-Mail-Benachrichtigung (beim erstmaligen Teilen und bei späteren Änderungen des Termins)."
-        ]
-      }
-    ]
-  },
-  {
     version: "1.0",
     groups: [
       {
@@ -42,7 +31,8 @@ const APP_CHANGELOG = [
         title: "Privattermine & Teilen",
         items: [
           "Termine können als „Privattermin“ markiert werden — diese sieht nur die Person, die sie angelegt hat.",
-          "Private Termine lassen sich gezielt mit einzelnen Nutzern (Suchfeld) oder ganzen Gruppen teilen, die den Termin dann zusätzlich sehen."
+          "Private Termine lassen sich gezielt mit einzelnen Nutzern (Suchfeld) oder ganzen Gruppen teilen, die den Termin dann zusätzlich sehen.",
+          "Personen, mit denen ein privater Termin geteilt wird, bekommen zusätzlich eine kurze E-Mail-Benachrichtigung (beim erstmaligen Teilen und bei späteren Änderungen des Termins)."
         ]
       },
       {
