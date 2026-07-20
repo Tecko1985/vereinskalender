@@ -832,7 +832,42 @@ function setSaveStatus(text, kind) {
   el.className = "header-status" + (kind ? " is-" + kind : "");
 }
 
-async function gatewaySaveWithStand() {
+// Es darf immer nur EIN dav-save unterwegs sein. gatewayRev (das ETag, mit dem der
+// Worker Konflikte erkennt) wird erst aktualisiert, wenn ein Save zurückkommt —
+// ein zweiter Save, der währenddessen startet, schickt also dasselbe, inzwischen
+// veraltete ETag und wird zwangsläufig mit 409 abgelehnt. Für die bearbeitende
+// Person sah das aus wie "ein anderes Gerät hat geändert", obwohl sie allein war,
+// und reloadAfterConflict() verwarf dabei ihre letzte Eingabe. Beim zügigen
+// Abstimmen auf einer Umfragekarte (jeder Klick speichert sofort) oder beim
+// Ziehen im Kategorie-Farbwähler passierte das mehrfach hintereinander, weil die
+// WebDAV-Runde deutlich länger dauert als der Abstand zwischen zwei Klicks.
+// Deshalb: Änderungen, die während eines laufenden Saves anfallen, nur vormerken
+// und danach in einem Rutsch nachschreiben. appData wird ohnehin immer komplett
+// geschrieben, es geht also nichts verloren, wenn mehrere Änderungen zusammenfallen.
+// Fehler werden weiterhin an die Aufrufer geworfen — die ConflictError-/
+// NotLoggedInError-Behandlung liegt dort und bleibt unverändert.
+let saveRunner = null;
+let saveDirty = false;
+function gatewaySaveWithStand() {
+  saveDirty = true;
+  if (!saveRunner) saveRunner = runSaveLoop().finally(() => { saveRunner = null; });
+  return saveRunner;
+}
+async function runSaveLoop() {
+  while (saveDirty) {
+    saveDirty = false;
+    try {
+      await writeToGateway();
+    } catch (e) {
+      // Bei Konflikt/Fehler lädt der Aufrufer den Stand neu bzw. zeigt den
+      // Login-Screen — dann NICHT blind nachschreiben, das würde den fremden
+      // Stand wieder überbügeln.
+      saveDirty = false;
+      throw e;
+    }
+  }
+}
+async function writeToGateway() {
   appData.meta = Object.assign({}, appData.meta, { stand: new Date().toISOString() });
   await gatewaySave(appData);
   const time = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
