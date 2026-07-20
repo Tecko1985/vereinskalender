@@ -16,18 +16,6 @@ const DEFAULT_KATEGORIEN = [
 
 const APP_CHANGELOG = [
   {
-    version: "1.1",
-    groups: [
-      {
-        title: "Speichern",
-        items: [
-          "Behoben: Beim zügigen Bearbeiten — etwa mehrere Stimmen kurz nacheinander auf einer Umfragekarte oder Name und Farbe einer Kategorie im Einstellungen-Tab — erschien wiederholt die Meldung „Die Daten wurden zwischenzeitlich auf einem anderen Gerät geändert“, obwohl niemand sonst am Kalender arbeitete; die zuletzt gemachte Eingabe ging dabei verloren. Es wird jetzt immer nur ein Speichervorgang gleichzeitig ausgeführt, weitere Änderungen werden direkt danach mitgespeichert.",
-          "Die Meldung erscheint dadurch nur noch, wenn tatsächlich ein anderes Gerät den Kalender geändert hat."
-        ]
-      }
-    ]
-  },
-  {
     version: "1.0",
     groups: [
       {
