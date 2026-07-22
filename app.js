@@ -848,8 +848,12 @@ function setSaveStatus(text, kind) {
 // NotLoggedInError-Behandlung liegt dort und bleibt unverändert.
 let saveRunner = null;
 let saveDirty = false;
+// Für das Sicherheitsnetz beim Verlassen der Seite (beforeunload unten).
+let ungespeicherteAenderungen = false;
+let letzterSaveFehlgeschlagen = false;
 function gatewaySaveWithStand() {
   saveDirty = true;
+  ungespeicherteAenderungen = true;
   if (!saveRunner) saveRunner = runSaveLoop().finally(() => { saveRunner = null; });
   return saveRunner;
 }
@@ -863,10 +867,26 @@ async function runSaveLoop() {
       // Login-Screen — dann NICHT blind nachschreiben, das würde den fremden
       // Stand wieder überbügeln.
       saveDirty = false;
+      letzterSaveFehlgeschlagen = true;
       throw e;
     }
   }
+  ungespeicherteAenderungen = false;
+  letzterSaveFehlgeschlagen = false;
 }
+
+// Sicherheitsnetz beim Verlassen der Seite: ein laufender fetch wird beim
+// Entladen abgebrochen, der keepalive-Request überlebt das Schließen des Tabs.
+// Nachgefragt wird NUR, wenn dieser Weg nicht trägt (über 64 KB, kein Token,
+// oder der letzte reguläre Versuch schlug schon fehl) — sonst käme die
+// Rückfrage bei jedem Schließen kurz nach einer Änderung.
+window.addEventListener("beforeunload", (e) => {
+  if (!ungespeicherteAenderungen) return;
+  const abgeschickt = gatewaySaveBeacon(appData);
+  if (abgeschickt && !letzterSaveFehlgeschlagen) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
 async function writeToGateway() {
   appData.meta = Object.assign({}, appData.meta, { stand: new Date().toISOString() });
   await gatewaySave(appData);

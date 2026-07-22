@@ -47,9 +47,15 @@ async function gatewayRequest(payload) {
   return resp.json();
 }
 
+// Das "me" aus der letzten dav-load-Antwort. Der Worker legt es bei, weil er
+// nutzer.json und die Rechte-Datei fuer diesen Request ohnehin gelesen hat --
+// der erste fetchMe() nach dem Laden kommt damit ohne eigenen Roundtrip aus.
+let gatewayMe = null;
+
 async function gatewayLoad() {
   const body = await gatewayRequest({ action: "dav-load", app: GATEWAY_APP_ID });
   gatewayRev = typeof body.rev === "string" ? body.rev : null;
+  gatewayMe = (body.me && typeof body.me === "object") ? body.me : null;
   return body.data; // Objekt oder null (Datei noch nicht vorhanden)
 }
 
@@ -60,8 +66,48 @@ async function gatewaySave(dataObj) {
   gatewayRev = typeof body.rev === "string" ? body.rev : null;
 }
 
+// Letzter Rettungsversuch beim Verlassen der Seite. Ein normaler fetch wird beim
+// Entladen abgebrochen -- mit keepalive ueberlebt der Request das Schliessen des
+// Tabs. Betrifft zwei Faelle: einen noch nicht abgelaufenen Debounce-Timer und
+// einen gerade laufenden Schreibvorgang.
+// Bewusst MIT gatewayRev: ein unbedingter Schreibvorgang wuerde hier zwar immer
+// durchgehen, koennte aber die Aenderung eines anderen Geraets ueberschreiben,
+// ohne dass es jemand merkt. Lieber ein wirkungsloser 409 als stiller fremder
+// Datenverlust.
+//
+// Grenze: Browser erlauben fuer keepalive-Requests nur 64 KB Body. Groessere
+// Datenbestaende gehen auf diesem Weg gar nicht raus -- deshalb meldet die
+// Funktion zurueck, ob sie abschicken konnte; der Aufrufer (beforeunload in
+// app.js) fragt dann stattdessen nach.
+const KEEPALIVE_MAX_BYTES = 64 * 1024;
+
+function gatewaySaveBeacon(dataObj) {
+  const token = getSessionToken();
+  if (!token) return false;
+  const payload = { action: "dav-save", app: GATEWAY_APP_ID, data: dataObj };
+  if (gatewayRev) payload.rev = gatewayRev;
+  const body = JSON.stringify(payload);
+  if (new Blob([body]).size > KEEPALIVE_MAX_BYTES) return false;
+  try {
+    fetch(GATEWAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body,
+      keepalive: true
+    });
+    return true;
+  } catch (_) {
+    return false; // z.B. wenn der Browser den keepalive-Request doch ablehnt
+  }
+}
+
 // Liefert {username, isAdmin, groupIds, vorname, nachname, canEdit} der eingeloggten Person.
 async function fetchMe() {
+  // Genau EINMAL aus dem letzten dav-load bedienen, danach wieder echt fragen:
+  // ein spaeterer Aufruf will den aktuellen Stand (etwa nach einem Rechte-
+  // wechsel), nicht eine beliebig alte Kopie. Faellt von selbst auf den Request
+  // zurueck, wenn der Worker das Feld noch nicht mitschickt.
+  if (gatewayMe) { const me = gatewayMe; gatewayMe = null; return me; }
   return gatewayRequest({ action: "me", app: GATEWAY_APP_ID });
 }
 
