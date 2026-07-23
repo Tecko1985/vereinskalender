@@ -37,7 +37,15 @@ async function gatewayRequest(payload) {
     body: JSON.stringify(payload)
   });
   if (resp.status === 401) throw new NotLoggedInError("Sitzung abgelaufen");
-  if (resp.status === 403) throw new Error("Kein Zugriff auf dieses Tool.");
+  if (resp.status === 403) {
+    // Den Grund des Servers durchreichen statt pauschal "Kein Zugriff auf dieses
+    // Tool": der Worker unterscheidet fehlenden Tool-Zugriff von fehlendem
+    // Bearbeiten-Recht, und genau diese Unterscheidung braucht man, um eine
+    // Fehlermeldung aus dem echten Betrieb ueberhaupt einordnen zu koennen.
+    let detail = "";
+    try { const b = await resp.json(); if (b && b.error) detail = String(b.error); } catch (_) {}
+    throw new Error(detail || "Kein Zugriff auf dieses Tool.");
+  }
   if (resp.status === 409) throw new ConflictError();
   if (!resp.ok) {
     let detail = "";
@@ -109,6 +117,26 @@ async function fetchMe() {
   // zurueck, wenn der Worker das Feld noch nicht mitschickt.
   if (gatewayMe) { const me = gatewayMe; gatewayMe = null; return me; }
   return gatewayRequest({ action: "me", app: GATEWAY_APP_ID });
+}
+
+// Eigene Stimme bei einem Umfrage-Termin setzen ("ja"/"nein") oder zurückziehen
+// (wert = ""). Bewusst NICHT über dav-save: Termine anlegen und ändern ist
+// serverseitig den Bearbeitern vorbehalten (vereinskalender steht in
+// WRITE_REQUIRES_EDIT_PERMISSION), abstimmen darf dagegen jeder, der den Termin
+// sieht. Der Worker liest dafür frisch, setzt nur das eigene Feld und liefert den
+// aktuellen Stimmenstand zurück — deshalb braucht es hier auch keine
+// Konflikt-Wiederholung im Client.
+async function gatewayVote(terminId, candId, wert) {
+  const body = await gatewayRequest({
+    action: "vereinskalender-vote",
+    terminId,
+    candId,
+    wert
+  });
+  // Die Datei hat sich serverseitig geändert — ohne das neue rev liefe der
+  // nächste eigene dav-save (als Bearbeiter) in einen Schein-Konflikt.
+  if (typeof body.rev === "string") gatewayRev = body.rev;
+  return (body.stimmen && typeof body.stimmen === "object") ? body.stimmen : null;
 }
 
 // Liefert {users:[{username,displayName}], groups:[{id,name}]} für den

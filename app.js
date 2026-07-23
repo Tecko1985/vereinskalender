@@ -666,40 +666,43 @@ async function notifyShareTargets(t, before) {
 // reloadAfterConflict()-Hinweis verworfen (Abstimm-Kollisionen sind bei mehreren
 // gleichzeitigen Wählern erwartbar), sondern still einmal auf dem frisch
 // geladenen Stand wiederholt.
+// Abstimmen läuft über die eigene Gateway-Aktion (gatewayVote in db.js), NICHT
+// über das Speichern des ganzen Dokuments: Termine schreiben ist serverseitig den
+// Bearbeitern vorbehalten, während abstimmen darf, wer den Termin sieht. Über
+// dav-save bekam deshalb genau die eingeladene Mehrheit ein 403 statt einer
+// Stimme. Konflikte löst der Worker selbst (frisch lesen, nur das eigene Feld
+// setzen) — hier braucht es keine Wiederholung mehr.
 async function castVote(terminId, candId, val) {
   if (!currentUser) return;
-  const applyVote = () => {
-    const t = appData.termine.find((x) => x.id === terminId);
-    if (!t || !terminIsUmfrage(t)) return false;
-    if (!t.umfrage.stimmen) t.umfrage.stimmen = {};
-    if (!t.umfrage.stimmen[currentUser.username]) t.umfrage.stimmen[currentUser.username] = {};
-    const mine = t.umfrage.stimmen[currentUser.username];
-    if (mine[candId] === val) delete mine[candId]; else mine[candId] = val;
-    return true;
-  };
-  if (!applyVote()) return;
+  const t = appData.termine.find((x) => x.id === terminId);
+  if (!t || !terminIsUmfrage(t)) return;
+  if (!t.umfrage.stimmen || typeof t.umfrage.stimmen !== "object") t.umfrage.stimmen = {};
+
+  const vorher = t.umfrage.stimmen;
+  const eigene = (vorher[currentUser.username] && typeof vorher[currentUser.username] === "object")
+    ? vorher[currentUser.username] : {};
+  const wert = (eigene[candId] === val) ? "" : val; // zweiter Klick auf denselben Knopf zieht die Stimme zurück
+
+  // Optimistisch anzeigen, damit der Klick sofort wirkt; schlägt der Aufruf fehl,
+  // wird exakt der vorherige Stand wiederhergestellt.
+  const eigeneNeu = Object.assign({}, eigene);
+  if (wert) eigeneNeu[candId] = wert; else delete eigeneNeu[candId];
+  t.umfrage.stimmen = Object.assign({}, vorher, { [currentUser.username]: eigeneNeu });
   renderTermine();
+
   try {
-    await gatewaySaveWithStand();
+    const stimmen = await gatewayVote(terminId, candId, wert);
+    if (stimmen) t.umfrage.stimmen = stimmen; // Serverstand inkl. zwischenzeitlich fremder Stimmen
+    renderTermine();
+    const time = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    setSaveStatus("Gespeichert " + time, "ok");
   } catch (e) {
-    if (e instanceof ConflictError) {
-      try {
-        const data = await gatewayLoad();
-        appData = normalizeData(data);
-        applyVote();
-        await gatewaySaveWithStand();
-        renderAll();
-      } catch (e2) {
-        console.error("Abstimmen fehlgeschlagen", e2);
-        setSaveStatus("Nicht gespeichert", "error");
-        alert("Deine Stimme konnte nicht gespeichert werden: " + e2.message);
-        renderAll();
-      }
-    } else {
-      console.error("Abstimmen fehlgeschlagen", e);
-      setSaveStatus("Nicht gespeichert", "error");
-      alert("Deine Stimme konnte nicht gespeichert werden: " + e.message);
-    }
+    t.umfrage.stimmen = vorher;
+    renderTermine();
+    if (e instanceof NotLoggedInError) { showConnectScreen("Sitzung abgelaufen — bitte neu anmelden."); return; }
+    console.error("Abstimmen fehlgeschlagen", e);
+    setSaveStatus("Nicht gespeichert", "error");
+    alert("Deine Stimme konnte nicht gespeichert werden: " + e.message);
   }
 }
 

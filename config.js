@@ -16,6 +16,19 @@ const DEFAULT_KATEGORIEN = [
 
 const APP_CHANGELOG = [
   {
+    version: "1.1",
+    groups: [
+      {
+        title: "Abstimmen bei Umfrage-Terminen",
+        items: [
+          "Bei einer Umfrage kann jetzt jeder abstimmen, der den Termin sehen darf — vorher meldete der Haken bzw. das Kreuz „Kein Zugriff auf dieses Tool“, sobald jemand ohne Bearbeiten-Recht abstimmen wollte. Genau die eingeladenen Personen kamen damit nicht durch.",
+          "Stimmen anderer werden beim Abstimmen sofort mit übernommen: die Zähler zeigen den aktuellen Stand, auch wenn in der Zwischenzeit jemand anderes abgestimmt hat.",
+          "Ein zweiter Klick auf denselben Knopf zieht die eigene Stimme wieder zurück (wie bisher)."
+        ]
+      }
+    ]
+  },
+  {
     version: "1.0",
     groups: [
       {
