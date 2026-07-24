@@ -134,10 +134,20 @@ function renderHeaderUser() {
     (canEdit() ? "" : " — Termine eintragen ist der Geschäftsstelle vorbehalten.");
 }
 
+// Dritte Stufe "Administrieren" (Tools-Übersicht, seit 2026-07-24): die
+// Kategorien-Verwaltung (Einstellungen-Tab) hängt an dieser Stufe — Bearbeiter
+// pflegen Termine, die Kategorien-Struktur pflegt die Administration.
+function canAdmin() {
+  if (!currentUser) return false;
+  return currentUser.isAdmin || !!currentUser.canAdmin;
+}
+
 function applyAdminVisibility() {
   const editable = canEdit();
+  const admin = canAdmin();
   document.body.classList.toggle("can-edit", editable);
   document.querySelectorAll(".editor-only").forEach((el) => el.classList.toggle("hidden", !editable));
+  document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !admin));
 }
 
 // ---------- Render: Termine ----------

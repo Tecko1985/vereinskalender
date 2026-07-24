@@ -5,7 +5,7 @@ const APP_VERSION = "1.0";
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 // Startbestand der Termin-Kategorien — greift, wenn im Gateway noch keine bzw.
-// leere Daten liegen. Im Einstellungen-Tab (nur Bearbeiter) frei anpassbar.
+// leere Daten liegen. Im Einstellungen-Tab (nur Administrieren-Stufe) frei anpassbar.
 const DEFAULT_KATEGORIEN = [
   { id: "halle",         name: "Halle gesperrt",          farbe: "#c0392b" },
   { id: "platz",         name: "Kunstrasen/Platz gesperrt", farbe: "#e08a1e" },
@@ -15,6 +15,17 @@ const DEFAULT_KATEGORIEN = [
 ];
 
 const APP_CHANGELOG = [
+  {
+    version: "1.2",
+    groups: [
+      {
+        title: "Kategorien-Verwaltung",
+        items: [
+          "Die Kategorien (Einstellungen-Tab) pflegt jetzt die Stufe „Administrieren“ (Häkchen im Sichtbarkeits-Panel der Tools-Übersicht) — Bearbeiter legen weiterhin Termine an und ändern sie, die Kategorien-Struktur ändert die Administration."
+        ]
+      }
+    ]
+  },
   {
     version: "1.1",
     groups: [
